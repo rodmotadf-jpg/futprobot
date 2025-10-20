@@ -1,6 +1,3 @@
-// This is your Prisma schema file,
-// learn more about it in the docs: https://pris.ly/d/prisma-schema
-
 generator client {
   provider = "prisma-client-js"
 }
@@ -8,4 +5,109 @@ generator client {
 datasource db {
   provider = "postgresql"
   url      = env("DATABASE_URL")
+}
+
+enum UserRole {
+  USER
+  ADMIN
+}
+
+enum SubscriptionStatus {
+  ACTIVE
+  CANCELLED
+  EXPIRED
+  PENDING
+}
+
+enum ResultStatus {
+  WIN
+  LOSS
+  PENDING
+}
+
+model User {
+  id            String         @id @default(cuid())
+  email         String         @unique
+  name          String
+  passwordHash  String
+  role          UserRole       @default(USER)
+  createdAt     DateTime       @default(now())
+  updatedAt     DateTime       @updatedAt
+  
+  subscription  Subscription?
+  strategies    Strategy[]
+  analyses      Analysis[]
+  results       Result[]
+
+  @@map("users")
+}
+
+model Subscription {
+  id            String              @id @default(cuid())
+  userId        String              @unique
+  status        SubscriptionStatus  @default(PENDING)
+  planType      String              @default("PREMIUM")
+  price         Float               @default(97.00)
+  startDate     DateTime?
+  endDate       DateTime?
+  createdAt     DateTime            @default(now())
+  updatedAt     DateTime            @updatedAt
+  
+  user          User                @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@map("subscriptions")
+}
+
+model Strategy {
+  id            String    @id @default(cuid())
+  userId        String
+  name          String
+  leagues       String[]
+  betTypes      String[]
+  minOdds       Float     @default(1.5)
+  maxOdds       Float     @default(3.0)
+  isActive      Boolean   @default(true)
+  createdAt     DateTime  @default(now())
+  updatedAt     DateTime  @updatedAt
+  
+  user          User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@map("strategies")
+}
+
+model Analysis {
+  id            String    @id @default(cuid())
+  userId        String
+  fixtureId     Int
+  league        String
+  homeTeam      String
+  awayTeam      String
+  prediction    String
+  odds          Float
+  confidence    Float
+  matchDate     DateTime
+  reasoning     String?
+  createdAt     DateTime  @default(now())
+  updatedAt     DateTime  @updatedAt
+  
+  user          User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  result        Result?
+
+  @@map("analyses")
+}
+
+model Result {
+  id            String        @id @default(cuid())
+  analysisId    String        @unique
+  userId        String
+  status        ResultStatus  @default(PENDING)
+  profit        Float         @default(0)
+  finalScore    String?
+  createdAt     DateTime      @default(now())
+  updatedAt     DateTime      @updatedAt
+  
+  analysis      Analysis      @relation(fields: [analysisId], references: [id], onDelete: Cascade)
+  user          User          @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@map("results")
 }
